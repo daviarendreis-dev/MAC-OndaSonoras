@@ -345,6 +345,7 @@ input[type=range]:disabled::-webkit-slider-thumb {
   margin-right: 6px;
 }
 
+
 .status-dot.live {
   background: #3dffa0;
   box-shadow: 0 0 10px #3dffa0;

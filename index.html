@@ -1,0 +1,77 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Acerte a Onda · Estação 1</title>
+  <link rel="stylesheet" href="style.css">
+  <script src="script.js" defer></script>
+</head>
+<body>
+  <div class="card">
+    <h1>
+      🎵 Acerte a Onda
+      <span>Estação 1</span>
+    </h1>
+    <div class="subtitle">
+      y = A · sin(B·x + C) + D  &nbsp;|&nbsp; Ajuste os coeficientes para cobrir a onda vermelha
+    </div>
+
+    <div class="canvas-container">
+      <canvas id="waveCanvas" width="1000" height="400"></canvas>
+      <div class="legend">
+        <div class="legend-item"><span class="legend-color" style="background:#ff4d6d;"></span> Alvo (nota)</div>
+        <div class="legend-item"><span class="legend-color" style="background:#3dffa0;"></span> Sua onda</div>
+      </div>
+    </div>
+
+    <!-- Controles deslizantes -->
+    <div class="controls">
+      <div class="slider-group">
+        <div class="slider-header">
+          <span>🔊 A (Amplitude)</span>
+          <span class="value" id="aValue">1.00</span>
+        </div>
+        <input type="range" id="aSlider" min="0.2" max="3.0" step="0.01" value="1.0">
+      </div>
+      <div class="slider-group">
+        <div class="slider-header">
+          <span>🌀 B (Frequência)</span>
+          <span class="value" id="bValue">1.00</span>
+        </div>
+        <input type="range" id="bSlider" min="0.5" max="4.0" step="0.01" value="1.0">
+      </div>
+      <div class="slider-group">
+        <div class="slider-header">
+          <span>↔️ C (Fase)</span>
+          <span class="value" id="cValue">0.00</span>
+        </div>
+        <input type="range" id="cSlider" min="-3.14" max="3.14" step="0.01" value="0.0">
+      </div>
+      <div class="slider-group">
+        <div class="slider-header">
+          <span>↕️ D (Deslocamento)</span>
+          <span class="value" id="dValue">0.00</span>
+        </div>
+        <input type="range" id="dSlider" min="-1.5" max="1.5" step="0.01" value="0.0">
+      </div>
+    </div>
+
+    <!-- Botões de ação e feedback -->
+    <div class="actions">
+      <div class="flex-row">
+        <button class="btn btn-note" id="playNoteBtn">🎹 Tocar nota alvo</button>
+        <div class="note-buttons">
+          <button class="note-btn" data-note="A4">A4</button>
+          <button class="note-btn active" data-note="C5">C5</button>
+          <button class="note-btn" data-note="E5">E5</button>
+        </div>
+      </div>
+      <div class="feedback" id="feedbackMsg">
+        <span class="match">⏳ Ajuste os controles</span>
+      </div>
+    </div>
+  </div>
+
+</body>
+</html>

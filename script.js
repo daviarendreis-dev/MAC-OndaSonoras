@@ -57,21 +57,23 @@
   };
 
   // -------- ESTADO DE LOCK / ACERTO --------
-  let isLocked = false;                  // trava geral (bloqueia updates)
-  let progress = 0;                      // 0..100, acumula tempo na zona de acerto
-  const PROGRESS_GAIN = 0.9;             // ganho por frame de acerto
-  const PROGRESS_DECAY = 0.35;           // decaimento por frame fora da zona
-  const LOCK_THRESHOLD = 100;            // % para travar
-  const ERROR_ACCEPT = 0.14;             // erro médio para considerar "acerto"
-  const ERROR_PERFECT = 0.06;            // erro para "perfeito"
+  let isLocked = false;
+  let progress = 0;
+  const PROGRESS_GAIN = 0.9;
+  const PROGRESS_DECAY = 0.35;
+  const LOCK_THRESHOLD = 100;
+  const ERROR_ACCEPT = 0.14;
+  const ERROR_PERFECT = 0.06;
 
-  // Zona estável (evita travar por 1 frame milagroso)
   let stableFrames = 0;
-  const STABLE_REQUIRED = 3;             // frames consecutivos de acerto
+  const STABLE_REQUIRED = 3;
 
-  // Flash visual no acerto
   let flashAlpha = 0;
   let flashColor = '61, 255, 160';
+
+  // Congela valores no momento do lock
+  let lockedA = 1.0;
+  let lockedB = 1.0;
 
   // ================= MAPEAMENTOS =================
   const FREQ_REF = 440;
@@ -157,7 +159,10 @@
     ctx.stroke();
     ctx.shadowBlur = 0;
 
-    // Onda resposta (verde)
+    // Onda resposta (verde) — usa valores travados se estiver locked
+    const drawA = isLocked ? lockedA : A;
+    const drawB = isLocked ? lockedB : B;
+
     ctx.beginPath();
     ctx.strokeStyle = isLocked ? '#6effa0' : '#3dffa0';
     ctx.lineWidth = isLocked ? 5 : 3.5;
@@ -165,7 +170,7 @@
     ctx.shadowBlur = isLocked ? 25 : 12;
     for (let x = 0; x < width; x++) {
       const t = x * scaleX;
-      const y = A * Math.sin(B * t + C) + D;
+      const y = drawA * Math.sin(drawB * t + C) + D;
       const canvasY = centerY - y * 70;
       if (x === 0) ctx.moveTo(x, canvasY);
       else ctx.lineTo(x, canvasY);
@@ -173,7 +178,7 @@
     ctx.stroke();
     ctx.shadowBlur = 0;
 
-    // Flash branco/verde por cima (ao acertar)
+    // Flash por cima (ao acertar)
     if (flashAlpha > 0) {
       ctx.fillStyle = `rgba(${flashColor}, ${flashAlpha})`;
       ctx.fillRect(0, 0, width, height);
@@ -184,10 +189,12 @@
   function computeError() {
     let errorSum = 0;
     const samples = 150;
+    const drawA = isLocked ? lockedA : A;
+    const drawB = isLocked ? lockedB : B;
     for (let i = 0; i < samples; i++) {
       const t = (i / samples) * (2 * Math.PI);
       const targetY = targetA * Math.sin(targetB * t + targetC) + targetD;
-      const respY = A * Math.sin(B * t + C) + D;
+      const respY = drawA * Math.sin(drawB * t + C) + D;
       errorSum += Math.abs(targetY - respY);
     }
     return errorSum / samples;
@@ -196,39 +203,37 @@
   function updateFeedback() {
     const avgError = computeError();
 
-    // Atualiza barra de progresso global
-    if (avgError < ERROR_ACCEPT) {
-      progress = Math.min(LOCK_THRESHOLD, progress + PROGRESS_GAIN);
-      stableFrames++;
-    } else {
-      progress = Math.max(0, progress - PROGRESS_DECAY);
-      stableFrames = 0;
-    }
+    if (!isLocked) {
+      // Atualiza barra de progresso
+      if (avgError < ERROR_ACCEPT) {
+        progress = Math.min(LOCK_THRESHOLD, progress + PROGRESS_GAIN);
+        stableFrames++;
+      } else {
+        progress = Math.max(0, progress - PROGRESS_DECAY);
+        stableFrames = 0;
+      }
+      progressFill.style.width = `${progress}%`;
+      progressPct.textContent = `${Math.round(progress)}%`;
 
-    progressFill.style.width = `${progress}%`;
-    progressPct.textContent = `${Math.round(progress)}%`;
+      // Mensagem
+      if (avgError < ERROR_PERFECT) {
+        feedbackMsg.innerHTML = `<span class="match">💚 Perfeito! Segure firme!</span>`;
+        feedbackMsg.style.background = '#1a3a2a';
+      } else if (avgError < ERROR_ACCEPT) {
+        feedbackMsg.innerHTML = `<span style="color:#b3ffb3;">🎯 Quase travando! Continue...</span>`;
+        feedbackMsg.style.background = '#1e2f2a';
+      } else if (avgError < 0.3) {
+        feedbackMsg.innerHTML = `🔍 Erro: ${avgError.toFixed(3)} · continue`;
+        feedbackMsg.style.background = '#1a1f2e';
+      } else {
+        feedbackMsg.innerHTML = `🎯 Erro grande: ${avgError.toFixed(3)}`;
+        feedbackMsg.style.background = '#2a1f2e';
+      }
 
-    // Mensagem
-    if (isLocked) {
-      feedbackMsg.innerHTML = `<span class="match">✅ Travado! Você acertou!</span>`;
-      feedbackMsg.style.background = '#1a3a2a';
-    } else if (avgError < ERROR_PERFECT) {
-      feedbackMsg.innerHTML = `<span class="match">💚 Perfeito! Segure firme!</span>`;
-      feedbackMsg.style.background = '#1a3a2a';
-    } else if (avgError < ERROR_ACCEPT) {
-      feedbackMsg.innerHTML = `<span style="color:#b3ffb3;">🎯 Quase travando! Continue...</span>`;
-      feedbackMsg.style.background = '#1e2f2a';
-    } else if (avgError < 0.3) {
-      feedbackMsg.innerHTML = `🔍 Erro: ${avgError.toFixed(3)} · continue`;
-      feedbackMsg.style.background = '#1a1f2e';
-    } else {
-      feedbackMsg.innerHTML = `🎯 Erro grande: ${avgError.toFixed(3)}`;
-      feedbackMsg.style.background = '#2a1f2e';
-    }
-
-    // Verifica se deve travar
-    if (!isLocked && stableFrames >= STABLE_REQUIRED && progress >= LOCK_THRESHOLD) {
-      triggerSuccess(avgError);
+      // Dispara lock
+      if (stableFrames >= STABLE_REQUIRED && progress >= LOCK_THRESHOLD) {
+        triggerSuccess(avgError);
+      }
     }
 
     return avgError;
@@ -237,11 +242,370 @@
   // ================= SUCESSO / LOCK =================
   function triggerSuccess(avgError) {
     isLocked = true;
+    lockedA = A;
+    lockedB = B;
+
     card.classList.add('locked');
-    canvasContainer.classList.add('success-flash');
 
     // Texto do subtítulo
     if (avgError < ERROR_PERFECT) {
       successSub.textContent = '🌟 Onda PERFEITA! Precisão absoluta!';
     } else {
-      successSub.textContent = `🎉 Coeficientes alinhados! Erro: ${avgError
+      successSub.textContent = `🎉 Coeficientes alinhados! Erro: ${avgError.toFixed(3)}`;
+    }
+
+    // Flash visual na onda
+    flashAlpha = 0.85;
+    flashColor = '61, 255, 160';
+    let flashFade = setInterval(() => {
+      flashAlpha -= 0.06;
+      if (flashAlpha <= 0) {
+        flashAlpha = 0;
+        clearInterval(flashFade);
+      }
+      drawWaves();
+    }, 25);
+
+    // Mostra overlay
+    successOverlay.classList.add('show');
+
+    // Confete
+    spawnConfetti();
+
+    // Som de vitória
+    playVictorySound();
+
+    // Feedback fixo
+    feedbackMsg.innerHTML = `<span class="match">✅ Travado! Você acertou!</span>`;
+    feedbackMsg.style.background = '#1a3a2a';
+  }
+
+  function resetLock() {
+    isLocked = false;
+    progress = 0;
+    stableFrames = 0;
+    lockedA = A;
+    lockedB = B;
+    progressFill.style.width = '0%';
+    progressPct.textContent = '0%';
+    successOverlay.classList.remove('show');
+    card.classList.remove('locked');
+    feedbackMsg.innerHTML = `⏳ Continue ajustando...`;
+    feedbackMsg.style.background = '#1a1f2e';
+    drawWaves();
+  }
+
+  // ================= CONFETES =================
+  function spawnConfetti() {
+    const colors = ['#3dffa0', '#4b6ef5', '#ff4d6d', '#ffd93d', '#c084fc'];
+    const rect = canvasContainer.getBoundingClientRect();
+    const centerX = rect.width / 2;
+    const centerY = rect.height / 2;
+
+    for (let i = 0; i < 45; i++) {
+      const p = document.createElement('div');
+      p.className = 'particle';
+      const color = colors[Math.floor(Math.random() * colors.length)];
+      const size = 6 + Math.random() * 10;
+      p.style.width = `${size}px`;
+      p.style.height = `${size}px`;
+      p.style.background = color;
+      p.style.boxShadow = `0 0 12px ${color}`;
+      p.style.left = `${centerX}px`;
+      p.style.top = `${centerY}px`;
+      p.style.borderRadius = Math.random() > 0.5 ? '50%' : '2px';
+
+      const angle = Math.random() * Math.PI * 2;
+      const dist = 80 + Math.random() * 240;
+      p.style.setProperty('--dx', `${Math.cos(angle) * dist}px`);
+      p.style.setProperty('--dy', `${Math.sin(angle) * dist}px`);
+
+      // Animação personalizada
+      p.style.animation = `particleFly ${0.8 + Math.random() * 0.6}s ease-out forwards`;
+
+      canvasContainer.appendChild(p);
+      setTimeout(() => p.remove(), 1500);
+    }
+  }
+
+  // ================= SOM DE VITÓRIA =================
+  function playVictorySound() {
+    if (!audioCtx) {
+      audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+    }
+    if (audioCtx.state === 'suspended') audioCtx.resume();
+
+    const now = audioCtx.currentTime;
+    // Arpejo maior: C5 - E5 - G5 - C6
+    const notes = [523.25, 659.25, 783.99, 1046.50];
+    notes.forEach((freq, i) => {
+      const osc = audioCtx.createOscillator();
+      const gain = audioCtx.createGain();
+      osc.type = 'triangle';
+      osc.frequency.value = freq;
+      const t0 = now + i * 0.09;
+      gain.gain.setValueAtTime(0, t0);
+      gain.gain.linearRampToValueAtTime(0.22, t0 + 0.03);
+      gain.gain.exponentialRampToValueAtTime(0.001, t0 + 0.4);
+      osc.connect(gain);
+      gain.connect(audioCtx.destination);
+      osc.start(t0);
+      osc.stop(t0 + 0.5);
+    });
+  }
+
+  // ================= SOM DE REFERÊNCIA =================
+  function playTone(frequency, duration = 0.8) {
+    if (!audioCtx) {
+      audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+    }
+    if (audioCtx.state === 'suspended') audioCtx.resume();
+
+    const now = audioCtx.currentTime;
+    const osc = audioCtx.createOscillator();
+    const gain = audioCtx.createGain();
+
+    osc.type = 'sine';
+    osc.frequency.value = frequency;
+
+    gain.gain.setValueAtTime(0, now);
+    gain.gain.linearRampToValueAtTime(0.25, now + 0.05);
+    gain.gain.exponentialRampToValueAtTime(0.001, now + duration);
+
+    osc.connect(gain);
+    gain.connect(audioCtx.destination);
+
+    osc.start(now);
+    osc.stop(now + duration);
+  }
+
+  // ================= MICROFONE =================
+  async function enableMicrophone() {
+    if (isMicOn) {
+      disableMicrophone();
+      return;
+    }
+
+    try {
+      micStream = await navigator.mediaDevices.getUserMedia({
+        audio: {
+          echoCancellation: false,
+          noiseSuppression: false,
+          autoGainControl: false
+        }
+      });
+
+      if (!audioCtx) {
+        audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+      }
+      if (audioCtx.state === 'suspended') await audioCtx.resume();
+
+      analyser = audioCtx.createAnalyser();
+      analyser.fftSize = FFT_SIZE;
+      analyser.smoothingTimeConstant = SMOOTHING;
+
+      sourceNode = audioCtx.createMediaStreamSource(micStream);
+      sourceNode.connect(analyser);
+
+      dataArray = new Uint8Array(analyser.frequencyBinCount);
+      timeDomainData = new Uint8Array(analyser.fftSize);
+
+      isMicOn = true;
+      micBtn.classList.add('active');
+      micBtn.innerHTML = '🎤 Microfone ligado';
+      micDot.classList.add('live');
+      micStatus.textContent = 'Captando...';
+
+      aSlider.disabled = true;
+      bSlider.disabled = true;
+      aAutoBadge.style.display = 'inline';
+      bAutoBadge.style.display = 'inline';
+
+      updateLoop();
+    } catch (err) {
+      console.error('Erro ao acessar microfone:', err);
+      alert('Não foi possível acessar o microfone. Verifique as permissões do navegador.');
+    }
+  }
+
+  function disableMicrophone() {
+    if (animationId) {
+      cancelAnimationFrame(animationId);
+      animationId = null;
+    }
+    if (sourceNode) {
+      sourceNode.disconnect();
+      sourceNode = null;
+    }
+    if (micStream) {
+      micStream.getTracks().forEach(t => t.stop());
+      micStream = null;
+    }
+    analyser = null;
+    isMicOn = false;
+    micBtn.classList.remove('active');
+    micBtn.innerHTML = '🎤 Ativar microfone';
+    micDot.classList.remove('live');
+    micStatus.textContent = 'Desligado';
+    freqDisplay.textContent = '— Hz';
+    noteDisplay.textContent = '—';
+    rmsDisplay.textContent = '0.00';
+    levelBar.style.width = '0%';
+
+    aSlider.disabled = false;
+    bSlider.disabled = false;
+    aAutoBadge.style.display = 'none';
+    bAutoBadge.style.display = 'none';
+  }
+
+  function updateLoop() {
+    if (!isMicOn || !analyser) return;
+
+    // Se estiver travado, só continua o loop sem atualizar a onda
+    if (isLocked) {
+      // ainda lê o microfone para o painel, mas não atualiza A/B
+      analyser.getByteFrequencyData(dataArray);
+      analyser.getByteTimeDomainData(timeDomainData);
+
+      let sumSquares = 0;
+      for (let i = 0; i < timeDomainData.length; i++) {
+        const v = (timeDomainData[i] - 128) / 128;
+        sumSquares += v * v;
+      }
+      const rms = Math.sqrt(sumSquares / timeDomainData.length);
+      rmsDisplay.textContent = rms.toFixed(4);
+      levelBar.style.width = `${Math.min(rms * 300, 100)}%`;
+
+      animationId = requestAnimationFrame(updateLoop);
+      return;
+    }
+
+    analyser.getByteFrequencyData(dataArray);
+    analyser.getByteTimeDomainData(timeDomainData);
+
+    // RMS
+    let sumSquares = 0;
+    for (let i = 0; i < timeDomainData.length; i++) {
+      const v = (timeDomainData[i] - 128) / 128;
+      sumSquares += v * v;
+    }
+    const rms = Math.sqrt(sumSquares / timeDomainData.length);
+
+    // Frequência dominante
+    let maxVal = -1;
+    let maxIndex = -1;
+    for (let i = 0; i < dataArray.length; i++) {
+      if (dataArray[i] > maxVal) {
+        maxVal = dataArray[i];
+        maxIndex = i;
+      }
+    }
+    const nyquist = audioCtx.sampleRate / 2;
+    const binFreq = maxIndex * nyquist / dataArray.length;
+    const rawFreq = (maxVal > 40) ? binFreq : 0;
+
+    if (rawFreq > 0) {
+      if (smoothedFreq === 0) smoothedFreq = rawFreq;
+      else smoothedFreq = smoothedFreq * (1 - FREQ_SMOOTH) + rawFreq * FREQ_SMOOTH;
+    } else {
+      smoothedFreq *= 0.95;
+      if (smoothedFreq < 20) smoothedFreq = 0;
+    }
+
+    // Displays
+    freqDisplay.textContent = smoothedFreq > 0 ? `${smoothedFreq.toFixed(0)} Hz` : '— Hz';
+    noteDisplay.textContent = freqToNoteName(smoothedFreq) || '—';
+    rmsDisplay.textContent = rms.toFixed(4);
+    levelBar.style.width = `${Math.min(rms * 300, 100)}%`;
+
+    // A e B do microfone
+    if (rms > 0.005) {
+      A = rmsToA(rms);
+      B = freqToB(smoothedFreq > 0 ? smoothedFreq : 440);
+    } else {
+      A = 0.05;
+    }
+
+    aSlider.value = A;
+    bSlider.value = B;
+    aValue.textContent = A.toFixed(2);
+    bValue.textContent = B.toFixed(2);
+
+    drawWaves();
+    updateFeedback();
+
+    animationId = requestAnimationFrame(updateLoop);
+  }
+
+  // ================= ALVO =================
+  function setTargetFromNote(note) {
+    if (note === 'A4') {
+      targetA = 0.9;
+      targetB = 1.0;
+      targetC = 0.0;
+      targetD = 0.0;
+    } else if (note === 'C5') {
+      targetA = 1.3;
+      targetB = 1.25;
+      targetC = 0.6;
+      targetD = 0.15;
+    } else if (note === 'E5') {
+      targetA = 1.6;
+      targetB = 1.6;
+      targetC = -0.4;
+      targetD = -0.2;
+    }
+    currentNote = note;
+    noteBtns.forEach(btn => {
+      if (btn.dataset.note === note) btn.classList.add('active');
+      else btn.classList.remove('active');
+    });
+
+    // Se trocar de nota, reseta o lock
+    if (isLocked) resetLock();
+
+    drawWaves();
+    updateFeedback();
+  }
+
+  // ================= SLIDERS MANUAIS (C e D) =================
+  function updateManualSliders() {
+    C = parseFloat(cSlider.value);
+    D = parseFloat(dSlider.value);
+    cValue.textContent = C.toFixed(2);
+    dValue.textContent = D.toFixed(2);
+    if (!isLocked) {
+      drawWaves();
+      updateFeedback();
+    }
+  }
+
+  cSlider.addEventListener('input', updateManualSliders);
+  dSlider.addEventListener('input', updateManualSliders);
+
+  // ================= EVENTOS =================
+  micBtn.addEventListener('click', enableMicrophone);
+
+  playNoteBtn.addEventListener('click', () => {
+    const freq = noteFrequencies[currentNote] || 523.25;
+    playTone(freq, 0.9);
+  });
+
+  noteBtns.forEach(btn => {
+    btn.addEventListener('click', () => {
+      const note = btn.dataset.note;
+      setTargetFromNote(note);
+      playTone(noteFrequencies[note] || 523.25, 0.7);
+    });
+  });
+
+  retryBtn.addEventListener('click', () => {
+    resetLock();
+  });
+
+  // ================= INICIALIZAÇÃO =================
+  setTargetFromNote('C5');
+  updateManualSliders();
+  drawWaves();
+  updateFeedback();
+})();

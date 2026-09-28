@@ -3,43 +3,66 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Acerte a Onda · Estação 1</title>
+  <title>Acerte a Onda · Estação 1 (Microfone)</title>
   <link rel="stylesheet" href="style.css">
-  <script src="script.js" defer></script>
 </head>
 <body>
   <div class="card">
     <h1>
-      🎵 Acerte a Onda
-      <span>Estação 1</span>
+      🎤 Acerte a Onda
+      <span>Estação 1 · Microfone</span>
     </h1>
     <div class="subtitle">
-      y = A · sin(B·x + C) + D  &nbsp;|&nbsp; Ajuste os coeficientes para cobrir a onda vermelha
+      y = A · sin(B·x + C) + D &nbsp;|&nbsp; Toque/cante a nota alvo e cubra a onda vermelha com sua voz!
     </div>
 
     <div class="canvas-container">
       <canvas id="waveCanvas" width="1000" height="400"></canvas>
       <div class="legend">
-        <div class="legend-item"><span class="legend-color" style="background:#ff4d6d;"></span> Alvo (nota)</div>
-        <div class="legend-item"><span class="legend-color" style="background:#3dffa0;"></span> Sua onda</div>
+        <div class="legend-item">
+          <span class="legend-color" style="background:#ff4d6d;"></span> Alvo (nota de referência)
+        </div>
+        <div class="legend-item">
+          <span class="legend-color" style="background:#3dffa0;"></span> Sua voz (microfone)
+        </div>
       </div>
     </div>
 
-    <!-- Controles deslizantes -->
+    <!-- Painel ao vivo do microfone -->
+    <div class="live-panel">
+      <div class="live-item">
+        <div class="label"><span class="status-dot" id="micDot"></span> Microfone</div>
+        <div class="value small" id="micStatus">Desligado</div>
+      </div>
+      <div class="live-item">
+        <div class="label">🎵 Frequência detectada</div>
+        <div class="value" id="freqDisplay">— Hz</div>
+        <div class="value small" id="noteDisplay">—</div>
+      </div>
+      <div class="live-item">
+        <div class="label">🔊 Nível (RMS)</div>
+        <div class="value" id="rmsDisplay">0.00</div>
+        <div class="level-bar-container">
+          <div class="level-bar" id="levelBar"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Coeficientes: A e B automáticos do microfone; C e D manuais -->
     <div class="controls">
       <div class="slider-group">
         <div class="slider-header">
-          <span>🔊 A (Amplitude)</span>
+          <span>🔊 A (Amplitude) <span class="auto-badge" id="aAutoBadge">🎤 AUTO</span></span>
           <span class="value" id="aValue">1.00</span>
         </div>
-        <input type="range" id="aSlider" min="0.2" max="3.0" step="0.01" value="1.0">
+        <input type="range" id="aSlider" min="0.1" max="3.0" step="0.01" value="1.0" disabled>
       </div>
       <div class="slider-group">
         <div class="slider-header">
-          <span>🌀 B (Frequência)</span>
+          <span>🌀 B (Frequência) <span class="auto-badge" id="bAutoBadge">🎤 AUTO</span></span>
           <span class="value" id="bValue">1.00</span>
         </div>
-        <input type="range" id="bSlider" min="0.5" max="4.0" step="0.01" value="1.0">
+        <input type="range" id="bSlider" min="0.3" max="5.0" step="0.01" value="1.0" disabled>
       </div>
       <div class="slider-group">
         <div class="slider-header">
@@ -57,9 +80,10 @@
       </div>
     </div>
 
-    <!-- Botões de ação e feedback -->
+    <!-- Ações -->
     <div class="actions">
       <div class="flex-row">
+        <button class="btn btn-mic" id="micBtn">🎤 Ativar microfone</button>
         <button class="btn btn-note" id="playNoteBtn">🎹 Tocar nota alvo</button>
         <div class="note-buttons">
           <button class="note-btn" data-note="A4">A4</button>
@@ -68,10 +92,11 @@
         </div>
       </div>
       <div class="feedback" id="feedbackMsg">
-        <span class="match">⏳ Ajuste os controles</span>
+        <span class="match">⏳ Ative o microfone</span>
       </div>
     </div>
   </div>
 
+  <script src="script.js"></script>
 </body>
 </html>

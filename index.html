@@ -16,8 +16,20 @@
       y = A · sin(B·x + C) + D &nbsp;|&nbsp; Toque/cante a nota alvo e cubra a onda vermelha com sua voz!
     </div>
 
-    <div class="canvas-container">
+    <div class="canvas-container" id="canvasContainer">
       <canvas id="waveCanvas" width="1000" height="400"></canvas>
+
+      <!-- Overlay de sucesso -->
+      <div class="success-overlay" id="successOverlay">
+        <div class="success-ring"></div>
+        <div class="success-content">
+          <div class="success-emoji">🎯</div>
+          <div class="success-title">ACERTOU!</div>
+          <div class="success-sub" id="successSub">Onda perfeita</div>
+          <button class="btn btn-retry" id="retryBtn">🔄 Tentar novamente</button>
+        </div>
+      </div>
+
       <div class="legend">
         <div class="legend-item">
           <span class="legend-color" style="background:#ff4d6d;"></span> Alvo (nota de referência)
@@ -25,6 +37,17 @@
         <div class="legend-item">
           <span class="legend-color" style="background:#3dffa0;"></span> Sua voz (microfone)
         </div>
+      </div>
+    </div>
+
+    <!-- Barra de progresso de acerto -->
+    <div class="progress-container">
+      <div class="progress-label">
+        <span>🎯 Progresso de acerto</span>
+        <span id="progressPct">0%</span>
+      </div>
+      <div class="progress-track">
+        <div class="progress-fill" id="progressFill"></div>
       </div>
     </div>
 
@@ -48,7 +71,7 @@
       </div>
     </div>
 
-    <!-- Coeficientes: A e B automáticos do microfone; C e D manuais -->
+    <!-- Coeficientes -->
     <div class="controls">
       <div class="slider-group">
         <div class="slider-header">

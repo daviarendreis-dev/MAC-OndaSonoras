@@ -75,6 +75,22 @@
   let lockedA = 1.0;
   let lockedB = 1.0;
 
+  // -------- ESTADO DE ZOOM / PAN --------
+  let zoomLevel = 1.0;        // 1.0 = sem zoom; > 1 amplia (mais repetições visíveis)
+  let panOffset = 0;          // deslocamento horizontal em "unidades de t" (radianos)
+  const ZOOM_MIN = 0.5;
+  const ZOOM_MAX = 10.0;
+  const ZOOM_STEP = 0.5;
+
+  let isDragging = false;
+  let dragStartX = 0;
+  let dragStartPan = 0;
+
+const zoomInBtn = document.getElementById('zoomInBtn');
+  const zoomOutBtn = document.getElementById('zoomOutBtn');
+  const zoomResetBtn = document.getElementById('zoomResetBtn');
+  const zoomDisplay = document.getElementById('zoomDisplay');
+
   // ================= MAPEAMENTOS =================
   const FREQ_REF = 440;
   function freqToB(freq) {
@@ -118,7 +134,9 @@
   function drawWaves() {
     ctx.clearRect(0, 0, width, height);
 
-    // Grade
+    // Grade vertical — adapta ao nível de zoom (linhas a cada 50px, mas
+    // o "espaçamento" em t muda com o zoom)
+    const gridStep = 50;
     ctx.lineWidth = 1;
     for (let y = 0; y <= height; y += 40) {
       ctx.beginPath();
@@ -127,7 +145,7 @@
       ctx.strokeStyle = '#1e2538';
       ctx.stroke();
     }
-    for (let x = 0; x <= width; x += 50) {
+    for (let x = 0; x <= width; x += gridStep) {
       ctx.beginPath();
       ctx.moveTo(x, 0);
       ctx.lineTo(x, height);
@@ -143,14 +161,21 @@
     ctx.lineWidth = 1.5;
     ctx.stroke();
 
+    // Função auxiliar: converte x do canvas em t (radianos)
+    // com zoom e pan aplicados
+    const tAtX = (x) => {
+      const tBase = x * scaleX * zoomLevel;
+      return tBase + panOffset;
+    };
+
     // Onda alvo (vermelha)
     ctx.beginPath();
     ctx.strokeStyle = '#ff4d6d';
     ctx.lineWidth = 4;
     ctx.shadowColor = '#ff4d6d';
     ctx.shadowBlur = 12;
-    for (let x = 0; x < width; x++) {
-      const t = x * scaleX;
+    for (let x = 0; x <= width; x++) {
+      const t = tAtX(x);
       const y = targetA * Math.sin(targetB * t + targetC) + targetD;
       const canvasY = centerY - y * 70;
       if (x === 0) ctx.moveTo(x, canvasY);
@@ -168,8 +193,8 @@
     ctx.lineWidth = isLocked ? 5 : 3.5;
     ctx.shadowColor = '#3dffa0';
     ctx.shadowBlur = isLocked ? 25 : 12;
-    for (let x = 0; x < width; x++) {
-      const t = x * scaleX;
+    for (let x = 0; x <= width; x++) {
+      const t = tAtX(x);
       const y = drawA * Math.sin(drawB * t + C) + D;
       const canvasY = centerY - y * 70;
       if (x === 0) ctx.moveTo(x, canvasY);
@@ -177,6 +202,14 @@
     }
     ctx.stroke();
     ctx.shadowBlur = 0;
+
+    // Indicador sutil de zoom ativo
+    if (zoomLevel !== 1.0) {
+      ctx.fillStyle = 'rgba(61, 255, 160, 0.55)';
+      ctx.font = '600 13px "JetBrains Mono", monospace';
+      ctx.textAlign = 'left';
+      ctx.fillText(`🔍 ${zoomLevel.toFixed(1)}×  ·  arraste para navegar`, 18, height - 18);
+    }
 
     // Flash por cima (ao acertar)
     if (flashAlpha > 0) {
@@ -188,11 +221,14 @@
   // ================= FEEDBACK / ERRO =================
   function computeError() {
     let errorSum = 0;
-    const samples = 150;
+    const samples = 200;
     const drawA = isLocked ? lockedA : A;
     const drawB = isLocked ? lockedB : B;
+    // Amostra no MESMO intervalo t mostrado na tela (com zoom e pan)
+    const tStart = panOffset;
+    const tEnd = panOffset + (2 * Math.PI * zoomLevel);
     for (let i = 0; i < samples; i++) {
-      const t = (i / samples) * (2 * Math.PI);
+      const t = tStart + (i / samples) * (tEnd - tStart);
       const targetY = targetA * Math.sin(targetB * t + targetC) + targetD;
       const respY = drawA * Math.sin(drawB * t + C) + D;
       errorSum += Math.abs(targetY - respY);
@@ -280,7 +316,7 @@
     feedbackMsg.style.background = '#1a3a2a';
   }
 
-  function resetLock() {
+    function resetLock() {
     isLocked = false;
     progress = 0;
     stableFrames = 0;
@@ -292,6 +328,7 @@
     card.classList.remove('locked');
     feedbackMsg.innerHTML = `⏳ Continue ajustando...`;
     feedbackMsg.style.background = '#1a1f2e';
+    // Não reseta o zoom — o usuário pode querer mantê-lo
     drawWaves();
   }
 
@@ -615,7 +652,103 @@
     resetLock();
   });
 
+    // ================= ZOOM / PAN =================
+  function updateZoomDisplay() {
+    zoomDisplay.textContent = `${zoomLevel.toFixed(1)}×`;
+    if (zoomLevel !== 1.0) {
+      canvas.classList.add('zoomed');
+    } else {
+      canvas.classList.remove('zoomed');
+    }
+  }
+
+  function setZoom(newZoom, anchorX = width / 2) {
+    const oldZoom = zoomLevel;
+    newZoom = Math.max(ZOOM_MIN, Math.min(ZOOM_MAX, newZoom));
+    if (newZoom === oldZoom) return;
+
+    // Mantém o ponto sob o cursor (ou centro) fixo durante o zoom
+    const tAtAnchor = anchorX * scaleX * oldZoom + panOffset;
+    zoomLevel = newZoom;
+    panOffset = tAtAnchor - anchorX * scaleX * zoomLevel;
+
+    updateZoomDisplay();
+    drawWaves();
+  }
+
+  zoomInBtn.addEventListener('click', () => setZoom(zoomLevel + ZOOM_STEP));
+  zoomOutBtn.addEventListener('click', () => setZoom(zoomLevel - ZOOM_STEP));
+
+  zoomResetBtn.addEventListener('click', () => {
+    zoomLevel = 1.0;
+    panOffset = 0;
+    updateZoomDisplay();
+    drawWaves();
+  });
+
+  // Zoom com scroll do mouse
+  canvas.addEventListener('wheel', (e) => {
+    e.preventDefault();
+    const rect = canvas.getBoundingClientRect();
+    const scale = width / rect.width;
+    const mouseX = (e.clientX - rect.left) * scale;
+
+    const delta = e.deltaY < 0 ? ZOOM_STEP : -ZOOM_STEP;
+    setZoom(zoomLevel + delta, mouseX);
+  }, { passive: false });
+
+  // Pan (arrastar) com mouse
+  canvas.addEventListener('mousedown', (e) => {
+    if (zoomLevel === 1.0) return; // só permite arrastar com zoom ativo
+    isDragging = true;
+    dragStartX = e.clientX;
+    dragStartPan = panOffset;
+    canvas.classList.add('dragging');
+  });
+
+  window.addEventListener('mousemove', (e) => {
+    if (!isDragging) return;
+    const rect = canvas.getBoundingClientRect();
+    const scale = width / rect.width;
+    const dx = (e.clientX - dragStartX) * scale;
+    panOffset = dragStartPan - dx * scaleX * zoomLevel;
+    drawWaves();
+  });
+
+  window.addEventListener('mouseup', () => {
+    if (isDragging) {
+      isDragging = false;
+      canvas.classList.remove('dragging');
+    }
+  });
+
+  // Suporte a toque (mobile)
+  canvas.addEventListener('touchstart', (e) => {
+    if (zoomLevel === 1.0) return;
+    if (e.touches.length === 1) {
+      isDragging = true;
+      dragStartX = e.touches[0].clientX;
+      dragStartPan = panOffset;
+      canvas.classList.add('dragging');
+    }
+  }, { passive: true });
+
+  canvas.addEventListener('touchmove', (e) => {
+    if (!isDragging) return;
+    const rect = canvas.getBoundingClientRect();
+    const scale = width / rect.width;
+    const dx = (e.touches[0].clientX - dragStartX) * scale;
+    panOffset = dragStartPan - dx * scaleX * zoomLevel;
+    drawWaves();
+  }, { passive: true });
+
+  canvas.addEventListener('touchend', () => {
+    isDragging = false;
+    canvas.classList.remove('dragging');
+  });
+
   // ================= INICIALIZAÇÃO =================
+  updateZoomDisplay();
   sortearNotaAlvo();   // já sorteia uma nota aleatória ao carregar
   updateManualSliders();
   drawWaves();

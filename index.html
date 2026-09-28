@@ -7,113 +7,130 @@
   <link rel="stylesheet" href="style.css">
 </head>
 <body>
-  <div class="card">
-    <h1>
-      🎤 Acerte a Onda
-      <span>Estação 1 · Microfone</span>
-    </h1>
-    <div class="subtitle">
-      y = A · sin(B·x + C) + D &nbsp;|&nbsp; Toque/cante a nota alvo e cubra a onda vermelha com sua voz!
-    </div>
+  <div class="app">
+    <header class="app-header">
+      <h1>
+        🎤 Acerte a Onda
+        <span>Estação 1 · Microfone</span>
+      </h1>
+      <div class="subtitle">
+        y = A · sin(B·x + C) + D &nbsp;|&nbsp; Toque/cante a nota alvo e cubra a onda vermelha com sua voz!
+      </div>
+    </header>
 
-    <div class="canvas-container" id="canvasContainer">
-      <canvas id="waveCanvas" width="1000" height="400"></canvas>
+    <main class="app-body">
+      <!-- COLUNA ESQUERDA: GRÁFICO -->
+      <section class="left-panel">
+        <div class="canvas-container" id="canvasContainer">
+          <canvas id="waveCanvas" width="1000" height="400"></canvas>
 
-      <!-- Overlay de sucesso -->
-      <div class="success-overlay" id="successOverlay">
-        <div class="success-ring"></div>
-        <div class="success-content">
-          <div class="success-emoji">🎯</div>
-          <div class="success-title">ACERTOU!</div>
-          <div class="success-sub" id="successSub">Onda perfeita</div>
-          <button class="btn btn-retry" id="retryBtn">🔄 Tentar novamente</button>
-        </div>
-      </div>
+          <!-- Controles de zoom -->
+          <div class="zoom-controls">
+            <button class="zoom-btn" id="zoomInBtn" title="Aumentar zoom">🔍+</button>
+            <button class="zoom-btn" id="zoomOutBtn" title="Diminuir zoom">🔍−</button>
+            <button class="zoom-btn" id="zoomResetBtn" title="Resetar zoom">↺</button>
+            <span class="zoom-display" id="zoomDisplay">1.0×</span>
+          </div>
 
-      <div class="legend">
-        <div class="legend-item">
-          <span class="legend-color" style="background:#ff4d6d;"></span> Alvo (nota de referência)
-        </div>
-        <div class="legend-item">
-          <span class="legend-color" style="background:#3dffa0;"></span> Sua voz (microfone)
-        </div>
-      </div>
-    </div>
+          <!-- Overlay de sucesso -->
+          <div class="success-overlay" id="successOverlay">
+            <div class="success-ring"></div>
+            <div class="success-content">
+              <div class="success-emoji">🎯</div>
+              <div class="success-title">ACERTOU!</div>
+              <div class="success-sub" id="successSub">Onda perfeita</div>
+              <button class="btn btn-retry" id="retryBtn">🔄 Tentar novamente</button>
+            </div>
+          </div>
 
-    <!-- Barra de progresso de acerto -->
-    <div class="progress-container">
-      <div class="progress-label">
-        <span>🎯 Progresso de acerto</span>
-        <span id="progressPct">0%</span>
-      </div>
-      <div class="progress-track">
-        <div class="progress-fill" id="progressFill"></div>
-      </div>
-    </div>
+          <div class="legend">
+            <div class="legend-item">
+              <span class="legend-color" style="background:#ff4d6d;"></span> Alvo
+            </div>
+            <div class="legend-item">
+              <span class="legend-color" style="background:#3dffa0;"></span> Sua voz
+            </div>
+          </div>
+        </div>
 
-    <!-- Painel ao vivo do microfone -->
-    <div class="live-panel">
-      <div class="live-item">
-        <div class="label"><span class="status-dot" id="micDot"></span> Microfone</div>
-        <div class="value small" id="micStatus">Desligado</div>
-      </div>
-      <div class="live-item">
-        <div class="label">🎵 Frequência detectada</div>
-        <div class="value" id="freqDisplay">— Hz</div>
-        <div class="value small" id="noteDisplay">—</div>
-      </div>
-      <div class="live-item">
-        <div class="label">🔊 Nível (RMS)</div>
-        <div class="value" id="rmsDisplay">0.00</div>
-        <div class="level-bar-container">
-          <div class="level-bar" id="levelBar"></div>
+        <!-- Barra de progresso logo abaixo do gráfico -->
+        <div class="progress-container">
+          <div class="progress-label">
+            <span>🎯 Progresso de acerto</span>
+            <span id="progressPct">0%</span>
+          </div>
+          <div class="progress-track">
+            <div class="progress-fill" id="progressFill"></div>
+          </div>
         </div>
-      </div>
-    </div>
+      </section>
 
-    <!-- Coeficientes -->
-    <div class="controls">
-      <div class="slider-group">
-        <div class="slider-header">
-          <span>🔊 A (Amplitude) <span class="auto-badge" id="aAutoBadge">🎤 AUTO</span></span>
-          <span class="value" id="aValue">1.00</span>
+      <!-- COLUNA DIREITA: PAINEL E CONTROLES -->
+      <aside class="right-panel">
+        <!-- Painel ao vivo do microfone -->
+        <div class="live-panel">
+          <div class="live-item">
+            <div class="label"><span class="status-dot" id="micDot"></span> Microfone</div>
+            <div class="value small" id="micStatus">Desligado</div>
+          </div>
+          <div class="live-item">
+            <div class="label">🎵 Frequência detectada</div>
+            <div class="value" id="freqDisplay">— Hz</div>
+            <div class="value small" id="noteDisplay">—</div>
+          </div>
+          <div class="live-item">
+            <div class="label">🔊 Nível (RMS)</div>
+            <div class="value" id="rmsDisplay">0.00</div>
+            <div class="level-bar-container">
+              <div class="level-bar" id="levelBar"></div>
+            </div>
+          </div>
         </div>
-        <input type="range" id="aSlider" min="0.1" max="3.0" step="0.01" value="1.0" disabled>
-      </div>
-      <div class="slider-group">
-        <div class="slider-header">
-          <span>🌀 B (Frequência) <span class="auto-badge" id="bAutoBadge">🎤 AUTO</span></span>
-          <span class="value" id="bValue">1.00</span>
-        </div>
-        <input type="range" id="bSlider" min="0.3" max="5.0" step="0.01" value="1.0" disabled>
-      </div>
-      <div class="slider-group">
-        <div class="slider-header">
-          <span>↔️ C (Fase)</span>
-          <span class="value" id="cValue">0.00</span>
-        </div>
-        <input type="range" id="cSlider" min="-3.14" max="3.14" step="0.01" value="0.0">
-      </div>
-      <div class="slider-group">
-        <div class="slider-header">
-          <span>↕️ D (Deslocamento)</span>
-          <span class="value" id="dValue">0.00</span>
-        </div>
-        <input type="range" id="dSlider" min="-1.5" max="1.5" step="0.01" value="0.0">
-      </div>
-    </div>
 
-    <!-- Ações -->
-    <div class="actions">
-      <div class="flex-row">
-        <button class="btn btn-mic" id="micBtn">🎤 Ativar microfone</button>
-        <button class="btn btn-note" id="playNoteBtn">🎹 Tocar nota alvo</button>
-        <button class="btn btn-note" id="novaNotaBtn">🎲 Nova nota alvo</button>
-      </div>
-      <div class="feedback" id="feedbackMsg">
-        <span class="match">⏳ Ative o microfone</span>
-      </div>
-    </div>
+        <!-- Coeficientes -->
+        <div class="controls">
+          <div class="slider-group">
+            <div class="slider-header">
+              <span>🔊 A (Amplitude) <span class="auto-badge" id="aAutoBadge">🎤 AUTO</span></span>
+              <span class="value" id="aValue">1.00</span>
+            </div>
+            <input type="range" id="aSlider" min="0.1" max="3.0" step="0.01" value="1.0" disabled>
+          </div>
+          <div class="slider-group">
+            <div class="slider-header">
+              <span>🌀 B (Frequência) <span class="auto-badge" id="bAutoBadge">🎤 AUTO</span></span>
+              <span class="value" id="bValue">1.00</span>
+            </div>
+            <input type="range" id="bSlider" min="0.3" max="5.0" step="0.01" value="1.0" disabled>
+          </div>
+          <div class="slider-group">
+            <div class="slider-header">
+              <span>↔️ C (Fase)</span>
+              <span class="value" id="cValue">0.00</span>
+            </div>
+            <input type="range" id="cSlider" min="-3.14" max="3.14" step="0.01" value="0.0">
+          </div>
+          <div class="slider-group">
+            <div class="slider-header">
+              <span>↕️ D (Deslocamento)</span>
+              <span class="value" id="dValue">0.00</span>
+            </div>
+            <input type="range" id="dSlider" min="-1.5" max="1.5" step="0.01" value="0.0">
+          </div>
+        </div>
+
+        <!-- Ações -->
+        <div class="actions">
+          <button class="btn btn-mic" id="micBtn">🎤 Ativar microfone</button>
+          <button class="btn btn-note" id="playNoteBtn">🎹 Tocar nota alvo</button>
+          <button class="btn btn-note" id="novaNotaBtn">🎲 Nova nota alvo</button>
+        </div>
+
+        <div class="feedback" id="feedbackMsg">
+          <span class="match">⏳ Ative o microfone</span>
+        </div>
+      </aside>
+    </main>
   </div>
 
   <script src="script.js"></script>

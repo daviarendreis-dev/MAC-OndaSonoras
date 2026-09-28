@@ -49,13 +49,13 @@
   let targetC = 0.0;
   let targetD = 0.0;
 
-  let currentNote = 'C5';
-  const noteFrequencies = {
-    'A4': 440.00,
-    'C5': 523.25,
-    'E5': 659.25
-  };
+    // Nenhuma nota fixa — a nota alvo será sorteada aleatoriamente
+  let currentNote = null;
+  let currentFreq = 523.25; // preenchido no sorteio
 
+  // Faixa de frequências audíveis para o sorteio (Hz)
+  const FREQ_MIN = 80;
+  const FREQ_MAX = 1500; 
   // -------- ESTADO DE LOCK / ACERTO --------
   let isLocked = false;
   let progress = 0;
@@ -538,31 +538,39 @@
   }
 
   // ================= ALVO =================
-  function setTargetFromNote(note) {
-    if (note === 'A4') {
-      targetA = 0.9;
-      targetB = 1.0;
-      targetC = 0.0;
-      targetD = 0.0;
-    } else if (note === 'C5') {
-      targetA = 1.3;
-      targetB = 1.25;
-      targetC = 0.6;
-      targetD = 0.15;
-    } else if (note === 'E5') {
-      targetA = 1.6;
-      targetB = 1.6;
-      targetC = -0.4;
-      targetD = -0.2;
-    }
-    currentNote = note;
-    noteBtns.forEach(btn => {
-      if (btn.dataset.note === note) btn.classList.add('active');
-      else btn.classList.remove('active');
-    });
+      // Sorteia uma frequência aleatória (contínua) dentro da faixa audível
+  function sortearFrequencia() {
+    // Distribuição logarítmica: musicalmente mais natural que uniforme
+    const logMin = Math.log(FREQ_MIN);
+    const logMax = Math.log(FREQ_MAX);
+    const logFreq = logMin + Math.random() * (logMax - logMin);
+    return Math.exp(logFreq);
+  }
+
+  // Sorteia todos os coeficientes alvo baseados em uma frequência sorteada
+  function sortearNotaAlvo() {
+    currentFreq = sortearFrequencia();
+
+    // B é derivado da frequência sorteada (mesma escala usada no microfone)
+    targetB = freqToB(currentFreq);
+
+    // A: amplitude alvo aleatória entre 0.7 e 1.8 (desafio visual)
+    targetA = 0.7 + Math.random() * 1.1;
+
+    // C: fase aleatória entre -π e +π
+    targetC = (Math.random() * 2 - 1) * Math.PI;
+
+    // D: deslocamento aleatório pequeno entre -0.5 e +0.5
+    targetD = (Math.random() * 1.0) - 0.5;
+
+    // Guarda o nome aproximado da nota para exibição
+    currentNote = freqToNoteName(currentFreq) || `${currentFreq.toFixed(1)}Hz`;
 
     // Se trocar de nota, reseta o lock
     if (isLocked) resetLock();
+
+    // Atualiza visual dos botões (nenhum ativo agora)
+    noteBtns.forEach(btn => btn.classList.remove('active'));
 
     drawWaves();
     updateFeedback();
@@ -586,16 +594,20 @@
   // ================= EVENTOS =================
   micBtn.addEventListener('click', enableMicrophone);
 
-  playNoteBtn.addEventListener('click', () => {
-    const freq = noteFrequencies[currentNote] || 523.25;
-    playTone(freq, 0.9);
+    playNoteBtn.addEventListener('click', () => {
+    playTone(currentFreq, 0.9);
+  });
+  const novaNotaBtn = document.getElementById('novaNotaBtn');
+  novaNotaBtn.addEventListener('click', () => {
+    sortearNotaAlvo();
+    playTone(currentFreq, 0.7);
   });
 
+  // Os botões de nota agora funcionam como "sortear nova nota alvo"
   noteBtns.forEach(btn => {
     btn.addEventListener('click', () => {
-      const note = btn.dataset.note;
-      setTargetFromNote(note);
-      playTone(noteFrequencies[note] || 523.25, 0.7);
+      sortearNotaAlvo();
+      playTone(currentFreq, 0.7);
     });
   });
 
@@ -604,7 +616,7 @@
   });
 
   // ================= INICIALIZAÇÃO =================
-  setTargetFromNote('C5');
+  sortearNotaAlvo();   // já sorteia uma nota aleatória ao carregar
   updateManualSliders();
   drawWaves();
   updateFeedback();

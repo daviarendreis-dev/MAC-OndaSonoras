@@ -59,14 +59,14 @@
   // -------- ESTADO DE LOCK / ACERTO --------
   let isLocked = false;
   let progress = 0;
-  const PROGRESS_GAIN = 0.9;
-  const PROGRESS_DECAY = 0.35;
+  const PROGRESS_GAIN = 2.2;      // sobe mais rápido na zona de acerto
+  const PROGRESS_DECAY = 0.15;    // cai mais devagar fora da zona
   const LOCK_THRESHOLD = 100;
-  const ERROR_ACCEPT = 0.14;
-  const ERROR_PERFECT = 0.06;
+  const ERROR_ACCEPT = 0.38;      // zona de acerto bem mais generosa
+  const ERROR_PERFECT = 0.20;     // "perfeito" também mais acessível
 
   let stableFrames = 0;
-  const STABLE_REQUIRED = 3;
+  const STABLE_REQUIRED = 2;      // basta 2 frames consecutivos
 
   let flashAlpha = 0;
   let flashColor = '61, 255, 160';
@@ -216,13 +216,13 @@
       progressPct.textContent = `${Math.round(progress)}%`;
 
       // Mensagem
-      if (avgError < ERROR_PERFECT) {
+            if (avgError < ERROR_PERFECT) {
         feedbackMsg.innerHTML = `<span class="match">💚 Perfeito! Segure firme!</span>`;
         feedbackMsg.style.background = '#1a3a2a';
       } else if (avgError < ERROR_ACCEPT) {
-        feedbackMsg.innerHTML = `<span style="color:#b3ffb3;">🎯 Quase travando! Continue...</span>`;
+        feedbackMsg.innerHTML = `<span style="color:#b3ffb3;">🎯 Muito perto! Continue...</span>`;
         feedbackMsg.style.background = '#1e2f2a';
-      } else if (avgError < 0.3) {
+      } else if (avgError < 0.65) {
         feedbackMsg.innerHTML = `🔍 Erro: ${avgError.toFixed(3)} · continue`;
         feedbackMsg.style.background = '#1a1f2e';
       } else {
@@ -251,7 +251,7 @@
     if (avgError < ERROR_PERFECT) {
       successSub.textContent = '🌟 Onda PERFEITA! Precisão absoluta!';
     } else {
-      successSub.textContent = `🎉 Coeficientes alinhados! Erro: ${avgError.toFixed(3)}`;
+      successSub.textContent = `🎉 Muito bem! Você chegou perto! Erro: ${avgError.toFixed(3)}`;
     }
 
     // Flash visual na onda

@@ -3,32 +3,82 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Acerte a Onda · Estação 1 (Microfone)</title>
+  <title>Acerte a Onda · Estação 1</title>
   <link rel="stylesheet" href="style.css">
 </head>
 <body>
-  <div class="app">
+
+  <!-- ============ MODAL DE TUTORIAL ============ -->
+  <div class="modal-overlay" id="tutorialOverlay" aria-hidden="true">
+    <div class="modal" role="dialog" aria-labelledby="tutorialTitle">
+      <h2 id="tutorialTitle">🎤 Bem-vindo ao Acerte a Onda!</h2>
+      <ol class="tutorial-steps">
+        <li><strong>Ative o microfone</strong> clicando em "🎤 Ativar microfone".</li>
+        <li>O sistema vai <strong>sortear uma onda alvo</strong> (linha vermelha).</li>
+        <li><strong>Cante ou toque</strong> a nota que combine com a onda vermelha.</li>
+        <li>Sua voz gera a <strong>onda verde</strong> em tempo real.</li>
+        <li><strong>Quanto mais perto</strong> da vermelha, mais a barra enche.</li>
+        <li>Ao <strong>acertar</strong>, o sistema trava e comemora! 🎉</li>
+      </ol>
+      <p class="tutorial-hint">
+        💡 Dica: use os botões de <strong>zoom (🔍+ 🔍−)</strong> para ver melhor a repetição da onda.
+        Arraste o gráfico para navegar.
+      </p>
+      <div class="modal-actions">
+        <button class="btn btn-note" id="tutorialCloseBtn">Entendi, vamos lá!</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ============ APP PRINCIPAL ============ -->
+  <div class="app" id="appRoot">
+
     <header class="app-header">
       <h1>
         🎤 Acerte a Onda
         <span>Estação 1 · Microfone</span>
       </h1>
       <div class="subtitle">
-        y = A · sin(B·x + C) + D &nbsp;|&nbsp; Toque/cante a nota alvo e cubra a onda vermelha com sua voz!
+        y = A · sin(B·x + C) + D &nbsp;|&nbsp; Cante ou toque para cobrir a onda vermelha!
       </div>
     </header>
+
+    <!-- Painel de estatísticas -->
+    <div class="stats-bar">
+      <div class="stat-item">
+        <div class="stat-label">🎯 Alvo</div>
+        <div class="stat-value" id="targetDisplay">—</div>
+      </div>
+      <div class="stat-item">
+        <div class="stat-label">🏆 Acertos</div>
+        <div class="stat-value" id="hitsDisplay">0</div>
+      </div>
+      <div class="stat-item">
+        <div class="stat-label">⏱️ Tempo</div>
+        <div class="stat-value" id="timeDisplay">0.0s</div>
+      </div>
+      <div class="stat-item">
+        <div class="stat-label">🎚️ Modo</div>
+        <div class="stat-value">
+          <select id="modeSelect" class="mode-select" aria-label="Selecionar dificuldade">
+            <option value="easy">Fácil (C=D=0)</option>
+            <option value="hard" selected>Difícil (C/D pequenos)</option>
+          </select>
+        </div>
+      </div>
+    </div>
 
     <main class="app-body">
       <!-- COLUNA ESQUERDA: GRÁFICO -->
       <section class="left-panel">
         <div class="canvas-container" id="canvasContainer">
-          <canvas id="waveCanvas" width="1000" height="400"></canvas>
+          <canvas id="waveCanvas" aria-label="Gráfico das ondas alvo e resposta"></canvas>
 
           <!-- Controles de zoom -->
-          <div class="zoom-controls">
-            <button class="zoom-btn" id="zoomInBtn" title="Aumentar zoom">🔍+</button>
-            <button class="zoom-btn" id="zoomOutBtn" title="Diminuir zoom">🔍−</button>
-            <button class="zoom-btn" id="zoomResetBtn" title="Resetar zoom">↺</button>
+          <div class="zoom-controls" role="group" aria-label="Controles de zoom do gráfico">
+            <button class="zoom-btn" id="zoomInBtn" aria-label="Aumentar zoom" title="Aumentar zoom (tecla +)">🔍+</button>
+            <button class="zoom-btn" id="zoomOutBtn" aria-label="Diminuir zoom" title="Diminuir zoom (tecla −)">🔍−</button>
+            <button class="zoom-btn" id="zoomResetBtn" aria-label="Resetar zoom" title="Resetar zoom (tecla 0)">↺</button>
             <span class="zoom-display" id="zoomDisplay">1.0×</span>
           </div>
 
@@ -53,7 +103,7 @@
           </div>
         </div>
 
-        <!-- Barra de progresso logo abaixo do gráfico -->
+        <!-- Barra de progresso + medidor de erro -->
         <div class="progress-container">
           <div class="progress-label">
             <span>🎯 Progresso de acerto</span>
@@ -61,6 +111,16 @@
           </div>
           <div class="progress-track">
             <div class="progress-fill" id="progressFill"></div>
+          </div>
+
+          <div class="error-meter" id="errorMeter">
+            <div class="error-meter-label">
+              <span>📏 Erro médio</span>
+              <span class="error-value" id="errorValue">—</span>
+            </div>
+            <div class="error-meter-track">
+              <div class="error-meter-fill" id="errorMeterFill"></div>
+            </div>
           </div>
         </div>
       </section>
@@ -94,39 +154,41 @@
               <span>🔊 A (Amplitude) <span class="auto-badge" id="aAutoBadge">🎤 AUTO</span></span>
               <span class="value" id="aValue">1.00</span>
             </div>
-            <input type="range" id="aSlider" min="0.1" max="3.0" step="0.01" value="1.0" disabled>
+            <input type="range" id="aSlider" min="0.1" max="3.0" step="0.01" value="1.0" disabled aria-label="Coeficiente A">
           </div>
           <div class="slider-group">
             <div class="slider-header">
               <span>🌀 B (Frequência) <span class="auto-badge" id="bAutoBadge">🎤 AUTO</span></span>
               <span class="value" id="bValue">1.00</span>
             </div>
-            <input type="range" id="bSlider" min="0.3" max="5.0" step="0.01" value="1.0" disabled>
+            <input type="range" id="bSlider" min="0.3" max="5.0" step="0.01" value="1.0" disabled aria-label="Coeficiente B">
           </div>
           <div class="slider-group">
             <div class="slider-header">
               <span>↔️ C (Fase)</span>
               <span class="value" id="cValue">0.00</span>
             </div>
-            <input type="range" id="cSlider" min="-3.14" max="3.14" step="0.01" value="0.0">
+            <input type="range" id="cSlider" min="-3.14" max="3.14" step="0.01" value="0.0" aria-label="Coeficiente C">
           </div>
           <div class="slider-group">
             <div class="slider-header">
               <span>↕️ D (Deslocamento)</span>
               <span class="value" id="dValue">0.00</span>
             </div>
-            <input type="range" id="dSlider" min="-1.5" max="1.5" step="0.01" value="0.0">
+            <input type="range" id="dSlider" min="-1.5" max="1.5" step="0.01" value="0.0" aria-label="Coeficiente D">
           </div>
         </div>
 
         <!-- Ações -->
         <div class="actions">
-          <button class="btn btn-mic" id="micBtn">🎤 Ativar microfone</button>
-          <button class="btn btn-note" id="playNoteBtn">🎹 Tocar nota alvo</button>
-          <button class="btn btn-note" id="novaNotaBtn">🎲 Nova nota alvo</button>
+          <button class="btn btn-mic" id="micBtn" aria-label="Ativar ou desativar microfone">🎤 Ativar microfone</button>
+          <button class="btn btn-note" id="playNoteBtn" aria-label="Tocar nota alvo">🎹 Tocar nota alvo</button>
+          <button class="btn btn-note" id="novaNotaBtn" aria-label="Sortear nova nota alvo">🎲 Nova nota alvo</button>
+          <button class="btn btn-secondary" id="calibrateBtn" aria-label="Calibrar ruído de fundo">🎚️ Calibrar silêncio</button>
+          <button class="btn btn-secondary" id="tutorialBtn" aria-label="Abrir tutorial">❓ Tutorial</button>
         </div>
 
-        <div class="feedback" id="feedbackMsg">
+        <div class="feedback" id="feedbackMsg" role="status" aria-live="polite">
           <span class="match">⏳ Ative o microfone</span>
         </div>
       </aside>

@@ -153,8 +153,8 @@
   }
 
   function rmsToA(rms) {
-    const a = 0.2 + Math.min(rms * 12, 2.8);
-    return Math.max(0.1, Math.min(3.0, a));
+    const a = Math.min(rms * 12, 1.0);
+    return Math.max(0.0, Math.min(1.0, a));
   }
 
   function freqToNoteName(freq) {
